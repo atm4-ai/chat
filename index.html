@@ -1,0 +1,432 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemeMarket User List</title>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --text: #ffffff;
+      --panel: #1c1c1e;
+      --bubble: #2c2c2e;
+      --bubble-me: #0a84ff;
+      --input-bg: #2c2c2e;
+      --border: #333;
+    }
+
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --text: #000000;
+      --panel: #f5f5f5;
+      --bubble: #e0e0e0;
+      --bubble-me: #007aff;
+      --input-bg: #ffffff;
+      --border: #cccccc;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      height: 56px;
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .symbol-select select,
+    .center-search input,
+    #roomSearch {
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+
+    .symbol-select {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .center-search {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #chart {
+      flex: 2;
+      position: relative;
+    }
+
+    #tv-container {
+      height: 100%;
+    }
+
+    .resizer {
+      width: 5px;
+      background: var(--border);
+      cursor: col-resize;
+    }
+
+    #chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      position: relative;
+    }
+
+    #chat-top {
+      display: flex;
+      justify-content: flex-end;
+      padding: 6px 12px;
+    }
+
+    #chat-top button {
+      font-size: 20px;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    #messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bubble {
+      background: var(--bubble);
+      padding: 10px 14px;
+      border-radius: 16px;
+      max-width: 75%;
+      color: var(--text);
+    }
+
+    .bubble.you {
+      align-self: flex-end;
+      background: var(--bubble-me);
+      color: #fff;
+    }
+
+    #form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      position: relative;
+    }
+
+    #input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: none;
+      background: var(--input-bg);
+      color: var(--text);
+    }
+
+    #send, #emoji-btn {
+      padding: 10px 14px;
+      background: var(--bubble-me);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+
+    #emoji-popup {
+      position: absolute;
+      bottom: 55px;
+      right: 90px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 24px;
+    }
+
+    .emoji {
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    #user-popup {
+      position: absolute;
+      top: 40px;
+      right: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="symbol-select">
+      <label style="font-size:14px;">币种</label>
+      <select id="symbolSelect">
+        <option value="BTCUSDT">BTC</option>
+        <option value="ETHUSDT">ETH</option>
+        <option value="DOGEUSDT">DOGE</option>
+        <option value="PEPEUSDT">PEPE</option>
+      </select>
+    </div>
+    <div class="center-search">
+      <input id="roomSearch" placeholder="🔍 搜索币种" />
+    </div>
+    <button onclick="toggleTheme()">🌓</button>
+  </header>
+
+  <div class="main">
+    <div id="chart">
+      <div class="resizer" id="resizer"></div>
+      <div id="tv-container"></div>
+    </div>
+    <div id="chat">
+      <div id="chat-top">
+        <button onclick="toggleUsers()">👥</button>
+      </div>
+      <div id="user-popup">
+        <div>🧑 CZ.eth</div>
+        <div>🐸 PepeKing</div>
+        <div>🚀 RocketDegen</div>
+      </div>
+      <div id="messages"></div>
+      <form id="form">
+        <input id="input" autocomplete="off" placeholder="说点什么..." />
+        <button id="emoji-btn" type="button" onclick="toggleEmoji()">😊</button>
+        <button id="send">发送</button>
+        <div id="emoji-popup">
+          <div class="emoji">😂</div>
+          <div class="emoji">🤔</div>
+          <div class="emoji">🚀</div>
+          <div class="emoji">💩</div>
+          <div class="emoji">🐸</div>
+          <div class="emoji">❤️</div>
+          <div class="emoji">👀</div>
+          <div class="emoji">🥳</div>
+          <div class="emoji">🔥</div>
+          <div class="emoji">🙏</div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentSymbol = "BTCUSDT";
+
+    function loadChart(symbol, theme = "dark") {
+      document.getElementById("tv-container").innerHTML = "";
+      new TradingView.widget({
+        container_id: "tv-container",
+        autosize: true,
+        symbol: "BINANCE:" + symbol,
+        interval: "30",
+        theme: theme,
+        style: "1",
+        locale: "en",
+        enable_publishing: false
+      });
+    }
+
+    function appendMessage(msg) {
+      const div = document.createElement("div");
+      div.className = "bubble you";
+      div.textContent = msg;
+      document.getElementById("messages").appendChild(div);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+    }
+
+    document.getElementById("form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const val = document.getElementById("input").value.trim();
+      if (!val) return;
+      appendMessage(val);
+      document.getElementById("input").value = "";
+    });
+
+    function toggleEmoji() {
+      const popup = document.getElementById("emoji-popup");
+      popup.style.display = popup.style.display === "flex" ? "none" : "flex";
+    }
+
+    function toggleUsers() {
+      const userBox = document.getElementById("user-popup");
+      userBox.style.display = userBox.style.display === "block" ? "none" : "block";
+    }
+
+    document.querySelectorAll(".emoji").forEach(emoji => {
+      emoji.addEventListener("click", () => {
+        appendMessage(emoji.textContent);
+        document.getElementById("emoji-popup").style.display = "none";
+      });
+    });
+
+    document.getElementById("symbolSelect").addEventListener("change", function() {
+      currentSymbol = this.value;
+      loadChart(currentSymbol, document.documentElement.getAttribute("data-theme"));
+    });
+
+    document.getElementById("roomSearch").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        let val = this.value.trim().toUpperCase();
+        if (!val.endsWith("USDT")) val += "USDT";
+        currentSymbol = val;
+        loadChart(currentSymbol, document.documentElement.getAttribute("data-theme"));
+        document.getElementById("messages").innerHTML = "";
+      }
+    });
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const isDark = root.getAttribute("data-theme") === "dark";
+      root.setAttribute("data-theme", isDark ? "light" : "dark");
+      loadChart(currentSymbol, isDark ? "light" : "dark");
+    }
+
+    const resizer = document.getElementById("resizer");
+    const chart = document.getElementById("chart");
+    const chat = document.getElementById("chat");
+    let isDragging = false;
+
+    resizer.addEventListener("mousedown", () => {
+      isDragging = true;
+      document.body.style.cursor = "col-resize";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      const percent = e.clientX / window.innerWidth;
+      chart.style.flex = percent;
+      chat.style.flex = 1 - percent;
+    });
+
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      document.body.style.cursor = "default";
+    });
+
+    loadChart(currentSymbol);
+  </script>
+
+<!-- 在你原有基础上新增的功能代码 -->
+
+<!-- HTML部分修改 -->
+<div id="user-popup">
+  <div id="user-list"></div>
+</div>
+<button id="profile-btn" style="position:absolute;right:50px;top:12px;background:none;border:none;font-size:20px;cursor:pointer;">⚙️</button>
+<div id="profile-popup" style="position:absolute;right:10px;top:50px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;display:none;z-index:10;">
+  <input type="text" id="username" placeholder="用户名" style="width:100%;padding:8px;margin-bottom:8px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);">
+  <input type="file" id="avatar-upload" accept="image/*" style="margin-bottom:8px;">
+  <button onclick="saveProfile()" style="padding:8px 12px;border:none;border-radius:8px;background:var(--bubble-me);color:#fff;">保存</button>
+</div>
+
+<!-- JS 部分修改 -->
+<script>
+let userProfile = { username: "我", avatar: "" };
+
+function saveProfile() {
+  const usernameInput = document.getElementById("username").value;
+  const avatarInput = document.getElementById("avatar-upload").files[0];
+
+  if(usernameInput) userProfile.username = usernameInput;
+
+  if(avatarInput) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      userProfile.avatar = e.target.result;
+      updateUserList();
+    };
+    reader.readAsDataURL(avatarInput);
+  } else {
+    updateUserList();
+  }
+
+  document.getElementById("profile-popup").style.display = "none";
+}
+
+function updateUserList() {
+  document.getElementById("user-list").innerHTML = `<div><img src="${userProfile.avatar || ''}" style="width:20px;height:20px;border-radius:50%;margin-right:6px;vertical-align:middle;">${userProfile.username}</div><div>🧑 CZ.eth</div><div>🐸 PepeKing</div><div>🚀 RocketDegen</div>`;
+}
+
+function appendMessage(msg, isMe = true) {
+  const div = document.createElement("div");
+  div.className = `bubble ${isMe ? "you" : "other"}`;
+
+  if (isMe) {
+    div.style.alignSelf = "flex-end";
+    div.innerHTML = `<div style="display:flex;align-items:center;"><span style="margin-right:8px;">${msg}</span><img src="${userProfile.avatar || ''}" style="width:30px;height:30px;border-radius:50%;"></div>`;
+  } else {
+    div.style.alignSelf = "flex-start";
+    div.textContent = msg;
+  }
+
+  document.getElementById("messages").appendChild(div);
+  document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+}
+
+// 更新发送消息方法
+
+document.getElementById("form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const val = document.getElementById("input").value.trim();
+  if (!val) return;
+  appendMessage(val);
+  document.getElementById("input").value = "";
+});
+
+// 模拟他人消息（示例用）
+setTimeout(() => appendMessage("Hello!", false), 3000);
+
+// 右上角设置按钮
+
+document.getElementById("profile-btn").addEventListener("click", function() {
+  const popup = document.getElementById("profile-popup");
+  popup.style.display = popup.style.display === "block" ? "none" : "block";
+});
+
+// 初始加载在线用户列表
+updateUserList();
+</script>
+
+</body>
+</html>
