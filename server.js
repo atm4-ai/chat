@@ -1,29 +1,23 @@
+
 const express = require('express');
 const app = express();
-const http = require('http').Server(app);
+const http = require('http').createServer(app);
 const io = require('socket.io')(http);
-const PORT = process.env.PORT || 3000;
+const path = require('path');
 
-app.use(express.static(__dirname));
-
-let onlineUsers = {};
+app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
-  socket.on('user join', (userData) => {
-    onlineUsers[socket.id] = userData;
-    io.emit('user list', Object.values(onlineUsers));
+  console.log('A user connected');
+  socket.on('chat message', (msg) => {
+    io.emit('chat message', msg);
   });
-
-  socket.on('chat message', (msgData) => {
-    io.emit('chat message', msgData);
-  });
-
   socket.on('disconnect', () => {
-    delete onlineUsers[socket.id];
-    io.emit('user list', Object.values(onlineUsers));
+    console.log('A user disconnected');
   });
 });
 
+const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
+  console.log(`Server listening on port ${PORT}`);
 });
