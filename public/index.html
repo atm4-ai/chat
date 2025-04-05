@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MemeChat 完整版本</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f2f2f7;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      height: calc(100vh - 56px);
+    }
+    #chart, #chat {
+      flex: 1;
+      overflow: hidden;
+    }
+    #chat {
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+    #messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .message {
+      display: flex;
+      margin-bottom: 10px;
+      align-items: flex-end;
+    }
+    .message.self {
+      flex-direction: row-reverse;
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      margin: 0 8px;
+      object-fit: cover;
+    }
+    .bubble {
+      background: #e5e5ea;
+      padding: 10px 14px;
+      border-radius: 20px;
+      max-width: 60%;
+    }
+    .message.self .bubble {
+      background: #007aff;
+      color: white;
+    }
+    .meta {
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 3px;
+    }
+    #form {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+    }
+    #input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    #send {
+      padding: 10px 20px;
+      background: #007aff;
+      color: white;
+      border: none;
+      margin-left: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      backdrop-filter: blur(8px);
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #modal {
+      background: #fff;
+      padding: 24px;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 300px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    #modal input {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>MemeChat 🍎</strong></div>
+    <div id="userDisplay">未登录</div>
+  </header>
+  <main>
+    <div id="chart" style="background:#000;color:white;display:flex;align-items:center;justify-content:center;">图表区域</div>
+    <div id="chat">
+      <div id="messages"></div>
+      <form id="form">
+        <input id="input" placeholder="说点什么…" autocomplete="off" />
+        <button id="send">发送</button>
+      </form>
+    </div>
+  </main>
+
+  <div id="overlay">
+    <div id="modal">
+      <h3>欢迎来到 MemeChat</h3>
+      <input id="nickname" placeholder="你的昵称" />
+      <input id="avatarUpload" type="file" accept="image/*" />
+      <button onclick="enterChat()">进入</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let user = { name: "", avatar: "" };
+
+    function enterChat() {
+      const name = document.getElementById("nickname").value.trim();
+      const file = document.getElementById("avatarUpload").files[0];
+      if (!name || !file) return alert("请输入昵称并上传头像！");
+      const reader = new FileReader();
+      reader.onload = e => {
+        user.name = name;
+        user.avatar = e.target.result;
+        document.getElementById("overlay").style.display = "none";
+        document.getElementById("userDisplay").innerText = name;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const messages = document.getElementById("messages");
+
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      if (input.value) {
+        const payload = {
+          name: user.name,
+          avatar: user.avatar,
+          text: input.value,
+          time: new Date().toLocaleTimeString()
+        };
+        socket.emit("chat message", payload);
+        input.value = "";
+      }
+    });
+
+    socket.on("chat message", function(msg) {
+      const item = document.createElement("div");
+      item.className = "message" + (msg.name === user.name ? " self" : "");
+      item.innerHTML = `
+        <img src="${msg.avatar}" class="avatar" />
+        <div>
+          <div class="meta">${msg.name} @ ${msg.time}</div>
+          <div class="bubble">${msg.text}</div>
+        </div>
+      `;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    });
+  </script>
+</body>
+</html>
