@@ -1,39 +1,45 @@
-
 const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const path = require("path");
-
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const http = require("http").createServer(app);
+const io = require("socket.io")(http, {
+  cors: { origin: "*" }
+});
 
-let users = [];
-
-app.use(express.static(path.join(__dirname, "public")));
+const users = [];
 
 io.on("connection", (socket) => {
-  let currentUser = null;
+  console.log("✅ 有人连接了: ", socket.id);
 
   socket.on("join", (user) => {
-    currentUser = user;
-    users.push({ ...user, id: socket.id });
+    const existing = users.find(u => u.id === socket.id);
+    if (!existing) {
+      users.push({ id: socket.id, ...user });
+    }
     io.emit("userList", users);
   });
 
   socket.on("chatMessage", (msg) => {
-    if (currentUser) {
-      io.emit("chatMessage", { ...currentUser, text: msg });
+    const user = users.find(u => u.id === socket.id);
+    if (user) {
+      io.emit("chatMessage", {
+        name: user.name,
+        avatar: user.avatar,
+        text: msg
+      });
     }
   });
 
   socket.on("disconnect", () => {
-    users = users.filter(u => u.id !== socket.id);
+    const index = users.findIndex(u => u.id === socket.id);
+    if (index !== -1) users.splice(index, 1);
     io.emit("userList", users);
+    console.log("❌ 用户断开连接：", socket.id);
   });
 });
 
+app.use(express.static("public"));
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+http.listen(PORT, () => {
+  console.log("🚀 服务已启动，监听端口：" + PORT);
 });

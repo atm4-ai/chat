@@ -1,7 +1,7 @@
-
 {
-  "name": "memechat",
+  "name": "memechat-server",
   "version": "1.0.0",
+  "description": "Realtime chat server for MemeChat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
