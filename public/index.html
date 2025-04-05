@@ -604,5 +604,49 @@ function appendMessage(msg, fromSelf = true, user = { name: username, avatar: av
 }
 
   </script>
+
+<!-- Socket.IO 客户端 -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  // 重写发送逻辑
+  document.getElementById("form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const val = document.getElementById("input").value.trim();
+    if (!val) return;
+    socket.emit("chat message", {
+      user: { name: username, avatar: avatarData },
+      msg: val
+    });
+    document.getElementById("input").value = "";
+  });
+
+  // 接收并显示消息
+  socket.on("chat message", (data) => {
+    appendMessage(data.msg, data.user.name === username, data.user);
+  });
+
+  // 修复头像 FileReader 异步问题
+  document.getElementById("enter-chat").onclick = function() {
+    const name = document.getElementById("username-input").value.trim();
+    const file = document.getElementById("avatar-input").files[0];
+    if (!name || !file) {
+      alert("请填写昵称并上传头像！");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      avatarData = event.target.result;
+      localStorage.setItem("username", name);
+      localStorage.setItem("avatar", avatarData);
+      username = name;
+      hideUserModal();
+    };
+    reader.readAsDataURL(file);
+  };
+</script>
+
 </body>
 </html>
