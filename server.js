@@ -1,25 +1,43 @@
+const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
+const path = require('path');
 
-const express = require("express");
 const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http);
-const path = require("path");
+const server = http.createServer(app);
+const io = socketIO(server);
 
-app.use(express.static(path.join(__dirname, "public")));
+const users = new Map();
 
-io.on("connection", (socket) => {
-  console.log("A user connected");
+app.use(express.static(path.join(__dirname, 'public')));
 
-  socket.on("chat message", (msg) => {
-    io.emit("chat message", msg);
+io.on('connection', (socket) => {
+  console.log('New user connected');
+
+  socket.on('join', (user) => {
+    users.set(socket.id, user);
+    io.emit('userList', Array.from(users.values()));
   });
 
-  socket.on("disconnect", () => {
-    console.log("A user disconnected");
+  socket.on('chatMessage', (msg) => {
+    const user = users.get(socket.id);
+    if (user) {
+      io.emit('chatMessage', {
+        name: user.name,
+        avatar: user.avatar,
+        text: msg,
+        time: new Date().toLocaleTimeString()
+      });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    users.delete(socket.id);
+    io.emit('userList', Array.from(users.values()));
   });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
