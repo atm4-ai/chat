@@ -1,7 +1,7 @@
+
 {
-  "name": "wechat-chatroom",
+  "name": "memechat",
   "version": "1.0.0",
-  "description": "A realtime chatroom with WeChat-style frontend using Socket.IO",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
