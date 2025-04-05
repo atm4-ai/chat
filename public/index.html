@@ -462,5 +462,43 @@
 
     loadChart(currentSymbol);
   </script>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  function broadcastUserInfo() {
+    socket.emit("join", user);
+  }
+
+  // Emit message on submit
+  document.getElementById("form").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const val = document.getElementById("input").value.trim();
+    if (!val) return;
+    socket.emit("chatMessage", val);
+    document.getElementById("input").value = "";
+  });
+
+  // Receive messages
+  socket.on("chatMessage", (msg) => {
+    addMessage(msg.name, msg.avatar, msg.text, msg.name === user.name ? "right" : "left");
+  });
+
+  // Receive user list
+  socket.on("userList", (list) => {
+    const box = document.getElementById("user-popup");
+    box.innerHTML = "";
+    list.forEach(u => {
+      box.innerHTML += `<div><img src="${u.avatar}" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:6px;">${u.name}</div>`;
+    });
+  });
+
+  // Auto join on login
+  if (user.name && user.avatar) {
+    setTimeout(broadcastUserInfo, 500);
+  }
+</script>
 </body>
+
 </html>
