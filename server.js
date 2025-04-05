@@ -1,23 +1,22 @@
 
-const express = require('express');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const path = require('path');
+const server = http.createServer(app);
+const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static("public"));
 
-io.on('connection', (socket) => {
-  console.log('A user connected');
-  socket.on('chat message', (msg) => {
-    io.emit('chat message', msg);
-  });
-  socket.on('disconnect', () => {
-    console.log('A user disconnected');
+io.on("connection", (socket) => {
+  console.log("用户连接:", socket.id);
+
+  socket.on("chat message", (data) => {
+    io.emit("chat message", data); // 广播消息
   });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log("服务器已启动: http://localhost:" + PORT);
 });
