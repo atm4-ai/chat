@@ -1,1 +1,227 @@
-Final integrated MemeChat build with username + avatar + kline UI coming...
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>MemeChat V1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg, #0d0d0d);
+      color: var(--text, #fff);
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #1e1e1e;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    #main {
+      flex: 1;
+      display: flex;
+    }
+    #chart, #chat {
+      height: 100%;
+    }
+    #chart {
+      flex: 2;
+      border-right: 2px solid #333;
+    }
+    #tv-container {
+      width: 100%;
+      height: 100%;
+    }
+    #chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .message {
+      display: flex;
+      margin-bottom: 10px;
+      align-items: flex-end;
+    }
+    .message.self {
+      flex-direction: row-reverse;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin: 0 8px;
+    }
+    .bubble {
+      background: #2d2d2d;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 12px;
+      max-width: 60%;
+    }
+    .self .bubble {
+      background: #007aff;
+    }
+    #form {
+      display: flex;
+      border-top: 1px solid #333;
+    }
+    #input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      outline: none;
+    }
+    #send {
+      padding: 10px 20px;
+      background: #0a84ff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #user-panel {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      padding: 10px;
+      display: none;
+      z-index: 10;
+    }
+    #user-panel input {
+      margin: 5px 0;
+      padding: 6px;
+      width: 100%;
+    }
+    #toggle-settings {
+      cursor: pointer;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>MemeChat</strong> - <span id="room-name">BTCUSDT</span>
+    </div>
+    <div>
+      <select id="symbol">
+        <option value="BTCUSDT">BTC</option>
+        <option value="ETHUSDT">ETH</option>
+        <option value="DOGEUSDT">DOGE</option>
+      </select>
+      <span id="toggle-settings">⚙️</span>
+    </div>
+  </header>
+
+  <div id="user-panel">
+    <label>昵称:</label>
+    <input id="username" placeholder="Your name" />
+    <label>头像链接:</label>
+    <input id="avatar" placeholder="https://..." />
+    <button onclick="saveProfile()">保存</button>
+  </div>
+
+  <div id="main">
+    <div id="chart"><div id="tv-container"></div></div>
+    <div id="chat">
+      <div id="messages"></div>
+      <form id="form">
+        <input id="input" autocomplete="off" /><button id="send">发送</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentUser = {
+      name: localStorage.getItem('username') || "匿名用户",
+      avatar: localStorage.getItem('avatar') || "https://i.pravatar.cc/32?u=anon"
+    };
+
+    function saveProfile() {
+      currentUser.name = document.getElementById("username").value || "匿名用户";
+      currentUser.avatar = document.getElementById("avatar").value || "https://i.pravatar.cc/32?u=anon";
+      localStorage.setItem("username", currentUser.name);
+      localStorage.setItem("avatar", currentUser.avatar);
+      document.getElementById("user-panel").style.display = "none";
+    }
+
+    function addMessage(data, isSelf = false) {
+      const msg = document.createElement("div");
+      msg.className = "message" + (isSelf ? " self" : "");
+      msg.innerHTML = `
+        <img src="${data.avatar}" class="avatar" />
+        <div>
+          <div style="font-size:12px;color:#999;">${data.name}</div>
+          <div class="bubble">${data.text}</div>
+        </div>
+      `;
+      document.getElementById("messages").appendChild(msg);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+    }
+
+    document.getElementById("form").addEventListener("submit", e => {
+      e.preventDefault();
+      const input = document.getElementById("input");
+      const text = input.value.trim();
+      if (!text) return;
+      const payload = { name: currentUser.name, avatar: currentUser.avatar, text };
+      socket.emit("chat message", payload);
+      addMessage(payload, true);
+      input.value = "";
+    });
+
+    socket.on("chat message", data => {
+      if (data.name !== currentUser.name) {
+        addMessage(data);
+      }
+    });
+
+    document.getElementById("toggle-settings").onclick = () => {
+      document.getElementById("username").value = currentUser.name;
+      document.getElementById("avatar").value = currentUser.avatar;
+      document.getElementById("user-panel").style.display =
+        document.getElementById("user-panel").style.display === "none" ? "block" : "none";
+    };
+
+    document.getElementById("symbol").onchange = (e) => {
+      const val = e.target.value;
+      document.getElementById("room-name").innerText = val;
+      loadChart(val);
+      document.getElementById("messages").innerHTML = "";
+    };
+
+    function loadChart(symbol) {
+      document.getElementById("tv-container").innerHTML = "";
+      new TradingView.widget({
+        container_id: "tv-container",
+        autosize: true,
+        symbol: "BINANCE:" + symbol,
+        interval: "30",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        enable_publishing: false
+      });
+    }
+
+    window.onload = () => {
+      loadChart("BTCUSDT");
+    };
+  </script>
+</body>
+</html>
