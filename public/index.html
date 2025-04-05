@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemeChat Full</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --text: #ffffff;
+      --panel: #1c1c1e;
+      --bubble: #2c2c2e;
+      --bubble-me: #0a84ff;
+      --input-bg: #2c2c2e;
+      --border: #333;
+    }
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --text: #000000;
+      --panel: #f5f5f5;
+      --bubble: #e0e0e0;
+      --bubble-me: #007aff;
+      --input-bg: #ffffff;
+      --border: #cccccc;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 56px;
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    .symbol-select select, .center-search input {
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+    .symbol-select {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .center-search {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    #chart {
+      flex: 2;
+      position: relative;
+    }
+    #tv-container {
+      height: 100%;
+      min-height: 500px;
+    }
+    .resizer {
+      width: 5px;
+      background: var(--border);
+      cursor: col-resize;
+    }
+    #chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      position: relative;
+    }
+    #chat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+    }
+    #chat-top button {
+      font-size: 20px;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+    }
+    #messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .bubble {
+      background: var(--bubble);
+      padding: 10px 14px;
+      border-radius: 16px;
+      max-width: 75%;
+    }
+    .bubble.you {
+      align-self: flex-end;
+      background: var(--bubble-me);
+      color: #fff;
+    }
+    #form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      position: relative;
+    }
+    #input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: none;
+      background: var(--input-bg);
+      color: var(--text);
+    }
+    #send, #emoji-btn {
+      padding: 10px 14px;
+      background: var(--bubble-me);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+    #emoji-popup {
+      position: absolute;
+      bottom: 55px;
+      right: 90px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 24px;
+    }
+    .emoji {
+      cursor: pointer;
+      padding: 5px;
+    }
+    #user-popup {
+      position: absolute;
+      top: 40px;
+      right: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="symbol-select">
+      <label style="font-size:14px;">币种</label>
+      <select id="symbolSelect">
+        <option value="BTCUSDT">BTC</option>
+        <option value="ETHUSDT">ETH</option>
+        <option value="DOGEUSDT">DOGE</option>
+        <option value="PEPEUSDT">PEPE</option>
+      </select>
+    </div>
+    <div class="center-search">
+      <input id="roomSearch" placeholder="🔍 搜索币种" />
+    </div>
+    <button onclick="toggleTheme()">🌓</button>
+  </header>
+
+  <div class="main">
+    <div id="chart">
+      <div class="resizer" id="resizer"></div>
+      <div id="tv-container"></div>
+    </div>
+    <div id="chat">
+      <div id="chat-top">
+        <span>房间: <strong id="room-name">BTCUSDT</strong></span>
+        <button onclick="toggleUsers()">👥</button>
+      </div>
+      <div id="user-popup">
+        <div>🧑 CZ.eth</div>
+        <div>🐸 PepeKing</div>
+        <div>🚀 RocketDegen</div>
+      </div>
+      <div id="messages"></div>
+      <form id="form">
+        <input id="input" autocomplete="off" placeholder="说点什么..." />
+        <button id="emoji-btn" type="button" onclick="toggleEmoji()">😊</button>
+        <button id="send">发送</button>
+        <div id="emoji-popup">
+          <div class="emoji">😂</div>
+          <div class="emoji">🤔</div>
+          <div class="emoji">🚀</div>
+          <div class="emoji">💩</div>
+          <div class="emoji">🐸</div>
+          <div class="emoji">❤️</div>
+          <div class="emoji">👀</div>
+          <div class="emoji">🥳</div>
+          <div class="emoji">🔥</div>
+          <div class="emoji">🙏</div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentSymbol = "BTCUSDT";
+    const roomName = document.getElementById("room-name");
+
+    function loadChart(symbol, theme = "dark") {
+      document.getElementById("tv-container").innerHTML = "";
+      new TradingView.widget({
+        container_id: "tv-container",
+        autosize: true,
+        symbol: "BINANCE:" + symbol,
+        interval: "30",
+        theme: theme,
+        style: "1",
+        locale: "en",
+        enable_publishing: false
+      });
+    }
+
+    window.onload = () => { loadChart(currentSymbol); };
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const isDark = root.getAttribute("data-theme") === "dark";
+      root.setAttribute("data-theme", isDark ? "light" : "dark");
+      loadChart(currentSymbol, isDark ? "light" : "dark");
+    }
+
+    function appendMessage(msg) {
+      const div = document.createElement("div");
+      div.className = "bubble you";
+      div.textContent = msg;
+      document.getElementById("messages").appendChild(div);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+    }
+
+    document.getElementById("form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const val = document.getElementById("input").value.trim();
+      if (!val) return;
+      socket.emit("chat message", val);
+      document.getElementById("input").value = "";
+    });
+
+    socket.on("chat message", function(msg) {
+      appendMessage(msg);
+    });
+
+    function toggleEmoji() {
+      const popup = document.getElementById("emoji-popup");
+      popup.style.display = popup.style.display === "flex" ? "none" : "flex";
+    }
+
+    function toggleUsers() {
+      const popup = document.getElementById("user-popup");
+      popup.style.display = popup.style.display === "block" ? "none" : "block";
+    }
+
+    document.querySelectorAll(".emoji").forEach(emoji => {
+      emoji.addEventListener("click", () => {
+        socket.emit("chat message", emoji.textContent);
+        document.getElementById("emoji-popup").style.display = "none";
+      });
+    });
+
+    document.getElementById("symbolSelect").addEventListener("change", function() {
+      currentSymbol = this.value;
+      roomName.textContent = currentSymbol;
+      loadChart(currentSymbol, document.documentElement.getAttribute("data-theme"));
+      document.getElementById("messages").innerHTML = "";
+    });
+
+    document.getElementById("roomSearch").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        let val = this.value.trim().toUpperCase();
+        if (!val.endsWith("USDT")) val += "USDT";
+        currentSymbol = val;
+        roomName.textContent = currentSymbol;
+        loadChart(currentSymbol, document.documentElement.getAttribute("data-theme"));
+        document.getElementById("messages").innerHTML = "";
+      }
+    });
+
+    const resizer = document.getElementById("resizer");
+    const chart = document.getElementById("chart");
+    const chat = document.getElementById("chat");
+    let isDragging = false;
+
+    resizer.addEventListener("mousedown", () => {
+      isDragging = true;
+      document.body.style.cursor = "col-resize";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      const percent = e.clientX / window.innerWidth;
+      chart.style.flex = percent;
+      chat.style.flex = 1 - percent;
+    });
+
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      document.body.style.cursor = "default";
+    });
+  </script>
+</body>
+</html>
