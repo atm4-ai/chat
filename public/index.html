@@ -1,19 +1,323 @@
-
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Socket WeChat Chatroom</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Final WeChat Chatroom</title>
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --text: #ffffff;
+      --panel: #1c1c1e;
+      --bubble-left: #2c2c2e;
+      --bubble-right: #0a84ff;
+      --input-bg: #2c2c2e;
+      --border: #333;
+    }
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --text: #000000;
+      --panel: #f5f5f5;
+      --bubble-left: #e0e0e0;
+      --bubble-right: #007aff;
+      --input-bg: #ffffff;
+      --border: #cccccc;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      height: 56px;
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .symbol-select select, .center-search input {
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+
+    .symbol-select {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .center-search {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #chart {
+      flex: 2;
+      position: relative;
+    }
+
+    #tv-container {
+      height: 100%;
+    }
+
+    .resizer {
+      width: 5px;
+      background: var(--border);
+      cursor: col-resize;
+    }
+
+    #chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      position: relative;
+    }
+
+    #chat-top {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 12px;
+    }
+
+    #chat-top button {
+      font-size: 20px;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    #messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .message {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      max-width: 75%;
+    }
+
+    .message.left {
+      flex-direction: row;
+      align-self: flex-start;
+    }
+
+    .message.right {
+      flex-direction: row-reverse;
+      align-self: flex-end;
+    }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      max-width: 100%;
+      line-height: 1.4;
+      font-size: 14px;
+    }
+
+    .bubble strong {
+      font-size: 12px;
+      display: block;
+      opacity: 0.8;
+    }
+
+    .bubble.left {
+      background: var(--bubble-left);
+      color: var(--text);
+    }
+
+    .bubble.right {
+      background: var(--bubble-right);
+      color: #fff;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    #form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    #input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: none;
+      background: var(--input-bg);
+      color: var(--text);
+    }
+
+    #send, #emoji-btn {
+      padding: 10px 14px;
+      background: var(--bubble-right);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+
+    #emoji-popup {
+      position: absolute;
+      bottom: 55px;
+      right: 90px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 24px;
+      z-index: 10;
+    }
+
+    .emoji {
+      cursor: pointer;
+      padding: 5px;
+    }
+
+    #user-popup {
+      position: absolute;
+      top: 40px;
+      right: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+
+    #userModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #userModalContent {
+      background: var(--panel);
+      padding: 24px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 300px;
+    }
+
+    #userModalContent input {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+    }
+
+    #userModalContent button {
+      padding: 10px;
+      border-radius: 8px;
+      background: var(--bubble-right);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <div id="chat">
-    <div id="messages"></div>
-    <form id="form">
-      <input id="input" autocomplete="off" placeholder="说点什么..." />
-      <button id="send">发送</button>
-    </form>
+  <header>
+    <div class="symbol-select">
+      <label style="font-size:14px;">币种</label>
+      <select id="symbolSelect">
+        <option value="BTCUSDT">BTC</option>
+        <option value="ETHUSDT">ETH</option>
+        <option value="DOGEUSDT">DOGE</option>
+        <option value="PEPEUSDT">PEPE</option>
+      </select>
+    </div>
+    <div class="center-search">
+      <input id="roomSearch" placeholder="🔍 搜索币种" />
+    </div>
+    <div>
+      <button onclick="toggleUsers()">👥</button>
+      <button onclick="toggleUserSettings()">⚙</button>
+      <button onclick="toggleTheme()">🌓</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div id="chart">
+      <div class="resizer" id="resizer"></div>
+      <div id="tv-container"></div>
+    </div>
+    <div id="chat">
+      <div id="chat-top"></div>
+      <div id="user-popup">
+        <div>🧑 CZ.eth</div>
+        <div>🐸 PepeKing</div>
+        <div>🚀 RocketDegen</div>
+      </div>
+      <div id="messages"></div>
+      <form id="form">
+        <input id="input" autocomplete="off" placeholder="说点什么..." />
+        <button id="emoji-btn" type="button" onclick="toggleEmoji()">😊</button>
+        <button id="send">发送</button>
+        <div id="emoji-popup">
+          <div class="emoji">😂</div>
+          <div class="emoji">🤔</div>
+          <div class="emoji">🚀</div>
+          <div class="emoji">💩</div>
+          <div class="emoji">🐸</div>
+          <div class="emoji">❤️</div>
+          <div class="emoji">👀</div>
+          <div class="emoji">🥳</div>
+          <div class="emoji">🔥</div>
+          <div class="emoji">🙏</div>
+        </div>
+      </form>
+    </div>
   </div>
 
   <div id="userModal">
@@ -24,7 +328,139 @@
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="client.js"></script>
+  <script>
+    let currentSymbol = "BTCUSDT";
+    let user = JSON.parse(localStorage.getItem("user")) || { name: "", avatar: "" };
+
+    function loadChart(symbol, theme = "dark") {
+      document.getElementById("tv-container").innerHTML = "";
+      new TradingView.widget({
+        container_id: "tv-container",
+        autosize: true,
+        symbol: "BINANCE:" + symbol,
+        interval: "30",
+        theme: theme,
+        style: "1",
+        locale: "en",
+        enable_publishing: false
+      });
+    }
+
+    function toggleTheme() {
+      const root = document.documentElement;
+      const isDark = root.getAttribute("data-theme") === "dark";
+      const newTheme = isDark ? "light" : "dark";
+      root.setAttribute("data-theme", newTheme);
+      loadChart(currentSymbol, newTheme);
+    }
+
+    function toggleUsers() {
+      const box = document.getElementById("user-popup");
+      box.style.display = box.style.display === "block" ? "none" : "block";
+    }
+
+    function toggleEmoji() {
+      const popup = document.getElementById("emoji-popup");
+      popup.style.display = popup.style.display === "flex" ? "none" : "flex";
+    }
+
+    function toggleUserSettings() {
+      document.getElementById("userModal").style.display = "flex";
+    }
+
+    function submitUser() {
+      const name = document.getElementById("nickname").value.trim();
+      const file = document.getElementById("avatarUpload").files[0];
+      if (!name || !file) return alert("请填写昵称并上传头像");
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        user.name = name;
+        user.avatar = e.target.result;
+        localStorage.setItem("user", JSON.stringify(user));
+        document.getElementById("userModal").style.display = "none";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.querySelectorAll(".emoji").forEach(emoji => {
+      emoji.addEventListener("click", () => {
+        addMessage(user.name, user.avatar, emoji.textContent, "right");
+        document.getElementById("emoji-popup").style.display = "none";
+      });
+    });
+
+    document.getElementById("form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const val = document.getElementById("input").value.trim();
+      if (!val) return;
+      addMessage(user.name, user.avatar, val, "right");
+      document.getElementById("input").value = "";
+    });
+
+    function addMessage(name, avatar, text, side) {
+      const container = document.createElement("div");
+      container.className = `message ${side}`;
+
+      const img = document.createElement("img");
+      img.src = avatar;
+      img.className = "avatar";
+
+      const bubble = document.createElement("div");
+      bubble.className = `bubble ${side}`;
+      bubble.innerHTML = `<strong>${name}</strong>${text}`;
+
+      container.appendChild(img);
+      container.appendChild(bubble);
+      document.getElementById("messages").appendChild(container);
+      document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+    }
+
+    document.getElementById("symbolSelect").addEventListener("change", function() {
+      currentSymbol = this.value;
+      loadChart(currentSymbol, document.documentElement.getAttribute("data-theme"));
+    });
+
+    document.getElementById("roomSearch").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        let val = this.value.trim().toUpperCase();
+        if (!val.endsWith("USDT")) val += "USDT";
+        currentSymbol = val;
+        loadChart(currentSymbol, document.documentElement.getAttribute("data-theme"));
+        document.getElementById("messages").innerHTML = "";
+      }
+    });
+
+    if (!user.name || !user.avatar) {
+      document.getElementById("userModal").style.display = "flex";
+    } else {
+      document.getElementById("userModal").style.display = "none";
+    }
+
+    const resizer = document.getElementById("resizer");
+    const chart = document.getElementById("chart");
+    const chat = document.getElementById("chat");
+    let isDragging = false;
+
+    resizer.addEventListener("mousedown", () => {
+      isDragging = true;
+      document.body.style.cursor = "col-resize";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      const percent = e.clientX / window.innerWidth;
+      chart.style.flex = percent;
+      chat.style.flex = 1 - percent;
+    });
+
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      document.body.style.cursor = "default";
+    });
+
+    loadChart(currentSymbol);
+  </script>
 </body>
 </html>
