@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -72,7 +73,6 @@
     }
     #tv-container {
       height: 100%;
-      min-height: 500px;
     }
     .resizer {
       width: 5px;
@@ -192,7 +192,7 @@
   <div class="main">
     <div id="chart">
       <div class="resizer" id="resizer"></div>
-      <div id="tv-container"></div>
+      <div id="tv-container" style="min-height:500px;"></div>
     </div>
     <div id="chat">
       <div id="chat-top">
@@ -243,8 +243,6 @@
         enable_publishing: false
       });
     }
-
-    window.onload = () => { loadChart(currentSymbol); };
 
     function toggleTheme() {
       const root = document.documentElement;
@@ -330,6 +328,8 @@
       isDragging = false;
       document.body.style.cursor = "default";
     });
+
+    window.onload = () => { loadChart(currentSymbol); };
   </script>
 </body>
 </html>
